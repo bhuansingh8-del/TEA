@@ -13,21 +13,35 @@ focusing on attrition, equity, resource allocation, and talent pipeline health.
 """)
 
 # Load and Clean Data
+# Load and Clean Data
 @st.cache_data
 def load_data():
     # Load file
     df = pd.read_csv('Refined_Employee_Database.csv')
     
+    # --- NEW FIX: Strip invisible spaces from column names ---
+    df.columns = df.columns.str.strip()
+    
+    # --- NEW FIX: Fail-safe to show us what columns actually exist ---
+    if 'Annual Salary' not in df.columns:
+        st.error(f"🚨 'Annual Salary' column is missing! Here is what Streamlit actually sees in your CSV: {list(df.columns)}")
+        st.stop() # Stops the app from crashing further so you can read the error
+        
     # 1. Clean Salary Column: Force string -> remove characters -> force float
     df['Annual Salary'] = df['Annual Salary'].astype(str).str.replace(r'[\$,]', '', regex=True)
     df['Annual Salary'] = pd.to_numeric(df['Annual Salary'], errors='coerce')
     
     # 2. Clean Bonus Column
-    df['Bonus %'] = df['Bonus %'].astype(str).str.replace(r'%', '', regex=True)
-    df['Bonus %'] = pd.to_numeric(df['Bonus %'], errors='coerce') / 100
+    if 'Bonus %' in df.columns:
+        df['Bonus %'] = df['Bonus %'].astype(str).str.replace(r'%', '', regex=True)
+        df['Bonus %'] = pd.to_numeric(df['Bonus %'], errors='coerce') / 100
         
     # 3. Standardize Attrition Flag
-    df['is_exited'] = df['is_exited'].astype(str).str.upper()
+    if 'is_exited' in df.columns:
+        df['is_exited'] = df['is_exited'].astype(str).str.upper()
+    elif 'Is_Exited' in df.columns: # Catch capitalization differences
+        df['Is_Exited'] = df['Is_Exited'].astype(str).str.upper()
+        df.rename(columns={'Is_Exited': 'is_exited'}, inplace=True)
     
     # 4. Define Job Levels for Insight 5
     def get_job_level(title):
@@ -38,13 +52,14 @@ def load_data():
         elif 'sr.' in title or 'senior' in title: return 'Senior Professional'
         else: return 'Professional/Analyst'
     
-    df['Job_Level'] = df['Job Title'].apply(get_job_level)
+    if 'Job Title' in df.columns:
+        df['Job_Level'] = df['Job Title'].apply(get_job_level)
     
     # 5. Create Age Groups
-    df['Age_Group'] = pd.cut(df['Age'], bins=[20, 30, 40, 50, 65], labels=['20-30', '31-40', '41-50', '51+'])
+    if 'Age' in df.columns:
+        df['Age_Group'] = pd.cut(df['Age'], bins=[20, 30, 40, 50, 65], labels=['20-30', '31-40', '41-50', '51+'])
     
     return df
-
 df = load_data()
 
 # --- INSIGHT 1 & 3: ATTRITION & HEADCOUNT ---

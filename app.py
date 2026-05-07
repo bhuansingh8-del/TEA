@@ -22,6 +22,12 @@ try:
     if 'Annual Salary' in df.columns:
         df['Annual Salary'] = pd.to_numeric(df['Annual Salary'].astype(str).str.replace(r'[^0-9.]', '', regex=True), errors='coerce')
 
+    # --- ADD THIS NEW BLOCK TO FIX THE BONUS CHART ---
+    if 'Bonus %' in df.columns:
+        df['Bonus %'] = df['Bonus %'].astype(str).str.replace(r'%', '', regex=True)
+        df['Bonus %'] = pd.to_numeric(df['Bonus %'], errors='coerce') / 100
+    # -------------------------------------------------
+
     # Tell us it worked
     st.success("✅ Data successfully loaded! Drawing charts below...")
 

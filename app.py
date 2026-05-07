@@ -19,14 +19,23 @@ def load_data():
     # Load file
     df = pd.read_csv('Refined_Employee_Database.csv')
     
-    # --- NEW FIX: Strip invisible spaces from column names ---
-    df.columns = df.columns.str.strip()
+    # --- THE ULTIMATE FIX: Dynamic Column Finding ---
+    # This searches for the word 'salary' or 'bonus' regardless of hidden spaces or typos
+    salary_col = next((col for col in df.columns if 'salary' in str(col).lower()), None)
+    bonus_col = next((col for col in df.columns if 'bonus' in str(col).lower()), None)
+    exit_col = next((col for col in df.columns if 'exited' in str(col).lower()), None)
     
-    # --- NEW FIX: Fail-safe to show us what columns actually exist ---
-    if 'Annual Salary' not in df.columns:
-        st.error(f"🚨 'Annual Salary' column is missing! Here is what Streamlit actually sees in your CSV: {list(df.columns)}")
-        st.stop() # Stops the app from crashing further so you can read the error
+    if not salary_col:
+        st.error("🚨 Critical Error: Could not find any column containing the word 'Salary'. Please check the CSV file.")
+        st.stop()
         
+    # Standardize the column names so the rest of the app doesn't break
+    df.rename(columns={
+        salary_col: 'Annual Salary', 
+        bonus_col: 'Bonus %', 
+        exit_col: 'is_exited'
+    }, inplace=True)
+    
     # 1. Clean Salary Column: Force string -> remove characters -> force float
     df['Annual Salary'] = df['Annual Salary'].astype(str).str.replace(r'[\$,]', '', regex=True)
     df['Annual Salary'] = pd.to_numeric(df['Annual Salary'], errors='coerce')
@@ -39,9 +48,6 @@ def load_data():
     # 3. Standardize Attrition Flag
     if 'is_exited' in df.columns:
         df['is_exited'] = df['is_exited'].astype(str).str.upper()
-    elif 'Is_Exited' in df.columns: # Catch capitalization differences
-        df['Is_Exited'] = df['Is_Exited'].astype(str).str.upper()
-        df.rename(columns={'Is_Exited': 'is_exited'}, inplace=True)
     
     # 4. Define Job Levels for Insight 5
     def get_job_level(title):

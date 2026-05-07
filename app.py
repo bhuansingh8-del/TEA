@@ -66,13 +66,22 @@ def fetch_clean_data():
 df = fetch_clean_data()
 
 # --- INSIGHT 1 & 3: ATTRITION & HEADCOUNT ---
-try:
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("1. Attrition Hotspots by Business Unit")
-        attrition_data = df.groupby('Business Unit')['is_exited'].apply(lambda x: (x == 'YES').mean() * 100).reset_index()
+        
+        # --- NEW ATTRITION CALCULATION ---
+        # 1. Safely convert the column to uppercase text
+        df['exit_clean'] = df['is_exited'].astype(str).str.upper()
+        # 2. Convert 'YES' to 1 and everything else to 0
+        df['attrition_numeric'] = df['exit_clean'].eq('YES').astype(int)
+        # 3. Calculate the mathematical average (which equals the percentage)
+        attrition_data = df.groupby('Business Unit')['attrition_numeric'].mean().reset_index()
+        attrition_data['attrition_numeric'] = attrition_data['attrition_numeric'] * 100
         attrition_data.columns = ['Business Unit', 'Attrition Rate (%)']
+        # ----------------------------------
+
         fig1 = px.bar(attrition_data.sort_values('Attrition Rate (%)'), 
                       x='Attrition Rate (%)', y='Business Unit', orientation='h',
                       color='Attrition Rate (%)', color_continuous_scale='Reds')
@@ -86,7 +95,7 @@ try:
                       color_discrete_sequence=px.colors.qualitative.Pastel)
         st.plotly_chart(fig3, width="stretch")
         st.info("IT accounts for the largest share of organizational overhead.")
-
+        
     st.divider()
 
     # --- INSIGHT 2 & 4: PAY GAP & GEOGRAPHY ---
